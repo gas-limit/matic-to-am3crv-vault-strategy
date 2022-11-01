@@ -38,6 +38,9 @@ contract Vault {
     address constant maUSDC = 0x1a13F4Ca1d028320A707D99520AbFefca3998b7F;
     address constant maUSDT = 0x60D55F02A771d515e077c9C2403a1ef324885CeC;
 
+    //curve AAVE pool LP token instance
+    address constant am3CRV = 0xE7a24EF0C5e95Ffb0f6684b813A78F2a3AD7D171;
+
     //Uniswapv2 Router Instance
     IUniswapV2Router02 public uniswapRouter = IUniswapV2Router02(0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D);
     //AAVE Lending Pool instance
