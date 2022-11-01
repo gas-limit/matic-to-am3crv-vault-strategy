@@ -105,10 +105,13 @@ contract Vault {
     function A_ETHToStablesUniswap() public {
         require(msg.sender == owner,"must be owner");
 
+        //get amount of ETH to spend per stablecoin (1/3)
+        uint thirdOfETH = address(this).balance / 3;
+
         // swap all ETH to USDC, USDT, and DAI from a DEX (Uniswap v2)
-        convertEthToStable(address(this).balance,getPathForETHtoDAI());
-        convertEthToStable(address(this).balance,getPathForETHtoUSDC());
-        convertEthToStable(address(this).balance,getPathForETHtoUSDT());
+        convertEthToStable(thirdOfETH,getPathForETHtoDAI());
+        convertEthToStable(thirdOfETH,getPathForETHtoUSDC());
+        convertEthToStable(thirdOfETH,getPathForETHtoUSDT());
 
     }
 
