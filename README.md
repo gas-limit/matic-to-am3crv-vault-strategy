@@ -5,9 +5,9 @@ I built this for some practice
  Strategy:
   1. Users deposit ETH 
   2. ETH is swapped for DAI, USDC, and USDT on on Uniswap V2
-  3. DAI, USDC, USDT is lent on AAVE
+  3. DAI, USDC, USDT is lent on AAVE <br/>
     AAVE gives aDAI, aUSDC, and aUSDT tokens
-  4. aDAI, aUSDC, and aUSDT is deposited into Curve AAVE Stablecoin pool
+  4. aDAI, aUSDC, and aUSDT is deposited into Curve AAVE Stablecoin pool <br/>
     Curve gives am3CRV tokens to contract
 
   How to Execute
