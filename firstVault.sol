@@ -30,15 +30,12 @@ contract Vault {
     address constant USDC = 0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174;
     address constant USDT = 0xc2132D05D31c914a87C6611C10748AEb04B58e8F;
 
-    //LP Token Instance
-    address constant CurveLPToken = 0xE7a24EF0C5e95Ffb0f6684b813A78F2a3AD7D171;
-
     //AAVE Token Instances
     address constant maDAI = 0x27F8D03b3a2196956ED754baDc28D73be8830A6e;
     address constant maUSDC = 0x1a13F4Ca1d028320A707D99520AbFefca3998b7F;
     address constant maUSDT = 0x60D55F02A771d515e077c9C2403a1ef324885CeC;
 
-    //curve AAVE pool LP token instance
+    //Curve AAVE pool LP token instance
     address constant am3CRV = 0xE7a24EF0C5e95Ffb0f6684b813A78F2a3AD7D171;
 
     //Uniswapv2 Router Instance
