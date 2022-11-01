@@ -83,14 +83,11 @@ contract Vault {
     }
 
     function withdraw(uint _shares) external {
-
-        address payable withdrawer = payable(msg.sender); 
-
+        require(_shares <= balanceOf[msg.sender],"You dont have that many shares");
         uint amount = (_shares * address(this).balance) / totalSupply;
         _burn(msg.sender, _shares);
-        
-        (bool sent, bytes memory data) = withdrawer.call{value: amount}("");
-        require(sent, "Failed to send Ether");
+
+        //  ** send user something of amount **
         
     }
 
