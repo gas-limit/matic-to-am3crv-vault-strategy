@@ -25,7 +25,7 @@ contract Vault {
 // ========================================= Variables and Instances 🧾
 
     address owner;
-    
+
     //Chainlink pricefeed dolllrs per wei
     AggregatorV3Interface internal priceFeed = AggregatorV3Interface(0xAB594600376Ec9fD91F8e885dADF0CE036862dE0);
 
@@ -120,8 +120,8 @@ contract Vault {
         //get amount of ETH to spend per stablecoin (1/3)
         uint thirdOfETH = address(this).balance / 3;
 
-        
-        uint deadline = block.timestamp + 15; // using 'now' for convenience, for mainnet pass deadline from frontend!
+        // using 'now' for convenience, for mainnet pass deadline from frontend!
+        uint deadline = block.timestamp + 15; 
 
        // tokenAmount is the minimum amount of output tokens that must be received for the transaction not to revert.
         //can use oracle
@@ -129,9 +129,10 @@ contract Vault {
         // pricefeed * msg.value
         (,int price,,,) = priceFeed.latestRoundData();
 
-        //gets price of matic
+        // dollars per matic wei * 1/3 of contract eth
         uint swapAmount = uint(price) * thirdOfETH;
 
+        // swap all ETH to USDC, USDT, and DAI from a DEX (Uniswap v2)
         uniswapRouter.swapExactETHForTokens{ value: thirdOfETH }(swapAmount, getPathForETHtoDAI(), address(this), deadline);
         uniswapRouter.swapExactETHForTokens{ value: thirdOfETH }(swapAmount, getPathForETHtoUSDC(), address(this), deadline);
         uniswapRouter.swapExactETHForTokens{ value: thirdOfETH }(swapAmount, getPathForETHtoUSDT(), address(this), deadline);
@@ -141,38 +142,27 @@ contract Vault {
         require(success, "refund failed");
 
 
-        // swap all ETH to USDC, USDT, and DAI from a DEX (Uniswap v2)
- //       convertEthToStable(thirdOfETH,getPathForETHtoDAI());
- //       convertEthToStable(thirdOfETH,getPathForETHtoUSDC());
- //       convertEthToStable(thirdOfETH,getPathForETHtoUSDT());
-
-
-    //    uniswapRouter.swapExactETHForTokens{ value: msg.value }(tokenAmount, getPathForETHtoDAI(), address(this), deadline);
-    //    uniswapRouter.swapExactETHForTokens{ value: msg.value }(tokenAmount, getPathForETHtoUSDC(), address(this), deadline);
-    //    uniswapRouter.swapExactETHForTokens{ value: msg.value }(tokenAmount, getPathForETHtoUSDT(), address(this), deadline);
+       
     }
 
      
     function B_DepositIntoAAVE() public {
         //approve erc20 transfer
-        IERC20(DAI).approve(address(aaveLendingPool),  type(uint256).max);
-        IERC20(USDC).approve(address(aaveLendingPool), type(uint256).max);
-        IERC20(USDT).approve(address(aaveLendingPool), type(uint256).max);
+        IERC20(DAI).approve(address(aaveLendingPool),  IERC20(DAI).balanceOf(address(this)));
+        IERC20(USDC).approve(address(aaveLendingPool), IERC20(USDC).balanceOf(address(this)));
+        IERC20(USDT).approve(address(aaveLendingPool), IERC20(USDT).balanceOf(address(this)));
         //  deposit USDC, USDT, and DAI into AAVE
-        aaveLendingPool.deposit(DAI, type(uint256).max, 0);
-        aaveLendingPool.deposit(USDC, type(uint256).max, 0);
-        aaveLendingPool.deposit(USDT, type(uint256).max, 0);
+        aaveLendingPool.deposit(DAI, IERC20(DAI).balanceOf(address(this)), 0);
+        aaveLendingPool.deposit(USDC, IERC20(USDC).balanceOf(address(this)), 0);
+        aaveLendingPool.deposit(USDT, IERC20(USDT).balanceOf(address(this)), 0);
     }
     
     
     function C_DepositIntoCurve() public {
         require(msg.sender == owner,"must be owner");
     
-        //  calculate amount of AAVE stablecoins in contract
-        uint aDai_balance = IERC20(maDAI).balanceOf(address(this));
-        uint aUsdc_balance = IERC20(maUSDC).balanceOf(address(this));
-        uint aUsdt_balance = IERC20(maUSDT).balanceOf(address(this));
-        uint[3] memory aaveTokenAmount = [aDai_balance,aUsdc_balance,aUsdt_balance];
+        //  calculate amount of AAVE stablecoins in contract and store in array
+        uint[3] memory aaveTokenAmount = [IERC20(maDAI).balanceOf(address(this)),IERC20(maUSDC).balanceOf(address(this)),IERC20(maUSDT).balanceOf(address(this))];
 
 
         //calculate minumum amount of LP tokens to mint (required by add liquidity function)
@@ -201,31 +191,6 @@ contract Vault {
 
 // ========================================= internal utility methods ✨
 
-    //convert ETH to stable at a dex (uniswap🦄 V2 in this case, lots of tutorials readily available )
-/*    function convertEthToStable(uint ethAmount, address[] memory stablecoin) internal {
-
-
-        uint deadline = block.timestamp + 15; // using 'now' for convenience, for mainnet pass deadline from frontend!
-
-       // tokenAmount is the minimum amount of output tokens that must be received for the transaction not to revert.
-        //can use oracle
-        // calculate: pricefeed returns dollars per wei
-        // pricefeed * msg.value
-        (,int price,,,) = priceFeed.latestRoundData();
-
-        uint swapAmount = uint(price) * ethAmount;
-
-        // tokenAmount is the minimum amount of output tokens that must be received for the transaction not to revert.
-        //can use oracle
-        // calculate: pricefeed returns dollars per wei
-        // pricefeed * eth amount = amount of stablecoin to receive, since they are $1 each, might need to fix this later lol.
-        uniswapRouter.swapExactETHForTokens{ value: msg.value }(swapAmount, stablecoin, address(this), deadline);
-    
-        // refund leftover ETH to user
-        (bool success,) = msg.sender.call{ value: address(this).balance }("");
-        require(success, "refund failed");
-    }
-*/
 
     function getPathForETHtoDAI() internal view returns (address[] memory) {
     address[] memory path = new address[](2);
@@ -293,135 +258,21 @@ interface IUniswapV2Router01 {
     function factory() external pure returns (address);
     function WETH() external pure returns (address);
 
-    function addLiquidity(
-        address tokenA,
-        address tokenB,
-        uint amountADesired,
-        uint amountBDesired,
-        uint amountAMin,
-        uint amountBMin,
-        address to,
-        uint deadline
-    ) external returns (uint amountA, uint amountB, uint liquidity);
-    function addLiquidityETH(
-        address token,
-        uint amountTokenDesired,
-        uint amountTokenMin,
-        uint amountETHMin,
-        address to,
-        uint deadline
-    ) external payable returns (uint amountToken, uint amountETH, uint liquidity);
-    function removeLiquidity(
-        address tokenA,
-        address tokenB,
-        uint liquidity,
-        uint amountAMin,
-        uint amountBMin,
-        address to,
-        uint deadline
-    ) external returns (uint amountA, uint amountB);
-    function removeLiquidityETH(
-        address token,
-        uint liquidity,
-        uint amountTokenMin,
-        uint amountETHMin,
-        address to,
-        uint deadline
-    ) external returns (uint amountToken, uint amountETH);
-    function removeLiquidityWithPermit(
-        address tokenA,
-        address tokenB,
-        uint liquidity,
-        uint amountAMin,
-        uint amountBMin,
-        address to,
-        uint deadline,
-        bool approveMax, uint8 v, bytes32 r, bytes32 s
-    ) external returns (uint amountA, uint amountB);
-    function removeLiquidityETHWithPermit(
-        address token,
-        uint liquidity,
-        uint amountTokenMin,
-        uint amountETHMin,
-        address to,
-        uint deadline,
-        bool approveMax, uint8 v, bytes32 r, bytes32 s
-    ) external returns (uint amountToken, uint amountETH);
-    function swapExactTokensForTokens(
-        uint amountIn,
-        uint amountOutMin,
-        address[] calldata path,
-        address to,
-        uint deadline
-    ) external returns (uint[] memory amounts);
-    function swapTokensForExactTokens(
-        uint amountOut,
-        uint amountInMax,
-        address[] calldata path,
-        address to,
-        uint deadline
-    ) external returns (uint[] memory amounts);
     function swapExactETHForTokens(uint amountOutMin, address[] calldata path, address to, uint deadline)
         external
         payable
         returns (uint[] memory amounts);
-    function swapTokensForExactETH(uint amountOut, uint amountInMax, address[] calldata path, address to, uint deadline)
-        external
-        returns (uint[] memory amounts);
-    function swapExactTokensForETH(uint amountIn, uint amountOutMin, address[] calldata path, address to, uint deadline)
-        external
-        returns (uint[] memory amounts);
-    function swapETHForExactTokens(uint amountOut, address[] calldata path, address to, uint deadline)
-        external
-        payable
-        returns (uint[] memory amounts);
 
-    function quote(uint amountA, uint reserveA, uint reserveB) external pure returns (uint amountB);
-    function getAmountOut(uint amountIn, uint reserveIn, uint reserveOut) external pure returns (uint amountOut);
-    function getAmountIn(uint amountOut, uint reserveIn, uint reserveOut) external pure returns (uint amountIn);
-    function getAmountsOut(uint amountIn, address[] calldata path) external view returns (uint[] memory amounts);
-    function getAmountsIn(uint amountOut, address[] calldata path) external view returns (uint[] memory amounts);
 }
 
 interface IUniswapV2Router02 is IUniswapV2Router01 {
-    function removeLiquidityETHSupportingFeeOnTransferTokens(
-        address token,
-        uint liquidity,
-        uint amountTokenMin,
-        uint amountETHMin,
-        address to,
-        uint deadline
-    ) external returns (uint amountETH);
-    function removeLiquidityETHWithPermitSupportingFeeOnTransferTokens(
-        address token,
-        uint liquidity,
-        uint amountTokenMin,
-        uint amountETHMin,
-        address to,
-        uint deadline,
-        bool approveMax, uint8 v, bytes32 r, bytes32 s
-    ) external returns (uint amountETH);
 
-    function swapExactTokensForTokensSupportingFeeOnTransferTokens(
-        uint amountIn,
-        uint amountOutMin,
-        address[] calldata path,
-        address to,
-        uint deadline
-    ) external;
     function swapExactETHForTokensSupportingFeeOnTransferTokens(
         uint amountOutMin,
         address[] calldata path,
         address to,
         uint deadline
     ) external payable;
-    function swapExactTokensForETHSupportingFeeOnTransferTokens(
-        uint amountIn,
-        uint amountOutMin,
-        address[] calldata path,
-        address to,
-        uint deadline
-    ) external;
 }
 
 
