@@ -205,7 +205,7 @@ contract Vault {
         IERC20(maUSDT).approve(address(curvePool), type(uint256).max);
 
         // Deposit funds into Curve's Polygon AAVE Stablecoin Pool
-        uint actual_LP_token_amount = ICurve_AAVE_Stable_Pool(curvePool).add_liquidity(aaveTokenAmount,curve_expected_LP_token_amount);
+        uint actual_LP_token_amount = ICurve_AAVE_Stable_Pool(curvePool).add_liquidity(aaveTokenAmount,0);
         //update public LP token amount minted
         totalLPTokensMinted = actual_LP_token_amount;
 
@@ -276,6 +276,11 @@ contract Vault {
     function maUSDTBalance() public view returns (uint) {
         uint daibalance = IERC20(maUSDT).balanceOf(address(this));
         return daibalance;
+    }
+
+    function am3CRVTBalance() public view returns (uint) {
+        uint am3CRVamt = IERC20(am3CRV).balanceOf(address(this));
+        return am3CRVamt;
     }
     
     // receive function 
