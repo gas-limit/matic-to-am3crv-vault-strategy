@@ -27,7 +27,7 @@ contract Vault {
     address owner;
 
     //Chainlink pricefeed dolllrs per wei
-    AggregatorV3Interface internal priceFeed = AggregatorV3Interface(0xAB594600376Ec9fD91F8e885dADF0CE036862dE0);
+    //AggregatorV3Interface internal priceFeed = AggregatorV3Interface(0xAB594600376Ec9fD91F8e885dADF0CE036862dE0);
 
     //vault variables
     uint public totalLPTokensMinted;
@@ -35,34 +35,34 @@ contract Vault {
     uint public step;
 
     //Stablecoin Instances
-    address private constant WETH = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2;
-    address constant DAI = 0x8f3Cf7ad23Cd3CaDbD9735AFf958023239c6A063;
-    address constant USDC = 0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174;
-    address constant USDT = 0xc2132D05D31c914a87C6611C10748AEb04B58e8F;
+    //address private constant WETH = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2;
+    //address constant DAI = 0x8f3Cf7ad23Cd3CaDbD9735AFf958023239c6A063;
+    //address constant USDC = 0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174;
+    //address constant USDT = 0xc2132D05D31c914a87C6611C10748AEb04B58e8F;
 
     //AAVE Token Instances
-    address constant maDAI = 0x27F8D03b3a2196956ED754baDc28D73be8830A6e;
-    address constant maUSDC = 0x1a13F4Ca1d028320A707D99520AbFefca3998b7F;
-    address constant maUSDT = 0x60D55F02A771d515e077c9C2403a1ef324885CeC;
+    //address constant maDAI = 0x27F8D03b3a2196956ED754baDc28D73be8830A6e;
+    //address constant maUSDC = 0x1a13F4Ca1d028320A707D99520AbFefca3998b7F;
+    //address constant maUSDT = 0x60D55F02A771d515e077c9C2403a1ef324885CeC;
 
     //Curve AAVE pool LP token instance
-    address constant am3CRV = 0xE7a24EF0C5e95Ffb0f6684b813A78F2a3AD7D171;
+    //address constant am3CRV = 0xE7a24EF0C5e95Ffb0f6684b813A78F2a3AD7D171;
 
     //Uniswapv2 Router Instance
-    IUniswapV2Router02 public uniswapRouter = IUniswapV2Router02(0x93bcDc45f7e62f89a8e901DC4A0E2c6C427D9F25);
+    //IUniswapV2Router02 public uniswapRouter = IUniswapV2Router02(0x93bcDc45f7e62f89a8e901DC4A0E2c6C427D9F25);
 
 
     /// @notice Interface for Aave lendingPoolAddressesProviderRegistry
 
     
-    address constant RegistryAddress = 0x3ac4e9aa29940770aeC38fe853a4bbabb2dA9C19;
-    address constant LendingPoolAddress = 0x3ac4e9aa29940770aeC38fe853a4bbabb2dA9C19;
+    //address constant RegistryAddress = 0x3ac4e9aa29940770aeC38fe853a4bbabb2dA9C19;
+    //address constant LendingPoolAddress = 0x3ac4e9aa29940770aeC38fe853a4bbabb2dA9C19;
 
-    address constant ProviderAddress = 0xd05e3E715d945B59290df0ae8eF85c1BdB684744;
-    ILendingPool LendingPool = (ILendingPool(ILendingPoolAddressesProvider(ProviderAddress).getLendingPool()));
+    //address constant ProviderAddress = 0xd05e3E715d945B59290df0ae8eF85c1BdB684744;
+    //ILendingPool LendingPool = (ILendingPool(ILendingPoolAddressesProvider(ProviderAddress).getLendingPool()));
     
     //Curve Polygon AAVE Stablecoin Pool instance
-    ICurve_AAVE_Stable_Pool curvePool = ICurve_AAVE_Stable_Pool(0x445FE580eF8d70FF569aB36e80c647af338db351);
+    //ICurve_AAVE_Stable_Pool curvePool = ICurve_AAVE_Stable_Pool(0x445FE580eF8d70FF569aB36e80c647af338db351);
 
     constructor() {
         owner = msg.sender;
@@ -130,6 +130,7 @@ contract Vault {
 
 
     function A_ETHToStablesUniswap() public {
+        IUniswapV2Router02 uniswapRouter = IUniswapV2Router02(0x93bcDc45f7e62f89a8e901DC4A0E2c6C427D9F25);
         //require(msg.sender == owner,"must be owner");
         //require(step == 0, "STEP_COMPLETED");
 
@@ -170,7 +171,11 @@ contract Vault {
     function B_DepositIntoAAVE() public {
        // require(msg.sender == owner,"must be owner");
        // require(step == 1,"STEP_COMPLETED");
-
+        address USDC = 0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174;
+        address DAI = 0x8f3Cf7ad23Cd3CaDbD9735AFf958023239c6A063;
+        address USDT = 0xc2132D05D31c914a87C6611C10748AEb04B58e8F;
+        address ProviderAddress = 0xd05e3E715d945B59290df0ae8eF85c1BdB684744;
+        ILendingPool LendingPool = (ILendingPool(ILendingPoolAddressesProvider(ProviderAddress).getLendingPool()));
         uint16 REFERRAL_CODE = uint16(0);
 
         IERC20(DAI).approve(address(LendingPool),  IERC20(DAI).balanceOf(address(this)));
@@ -191,13 +196,16 @@ contract Vault {
     function C_DepositIntoCurve() public {
      //   require(msg.sender == owner,"must be owner");
      //   require(step == 2, "STEP_COMPLETED");
-    
+    address maDAI = 0x27F8D03b3a2196956ED754baDc28D73be8830A6e;
+    address maUSDC = 0x1a13F4Ca1d028320A707D99520AbFefca3998b7F;
+    address maUSDT = 0x60D55F02A771d515e077c9C2403a1ef324885CeC;
+    ICurve_AAVE_Stable_Pool curvePool = ICurve_AAVE_Stable_Pool(0x445FE580eF8d70FF569aB36e80c647af338db351);
         //  calculate amount of AAVE stablecoins in contract and store in array
         uint[3] memory aaveTokenAmount = [IERC20(maDAI).balanceOf(address(this)),IERC20(maUSDC).balanceOf(address(this)),IERC20(maUSDT).balanceOf(address(this))];
 
 
         //calculate minumum amount of LP tokens to mint (required by add liquidity function)
-        uint curve_expected_LP_token_amount = ICurve_AAVE_Stable_Pool(curvePool).calc_token_amount(aaveTokenAmount,true);
+        //uint curve_expected_LP_token_amount = ICurve_AAVE_Stable_Pool(curvePool).calc_token_amount(aaveTokenAmount,true);
 
         //approve
         IERC20(maDAI).approve(address(curvePool), type(uint256).max);
@@ -223,7 +231,9 @@ contract Vault {
 // ========================================= internal utility methods ✨
 
 
-    function getPathForETHtoDAI() internal view returns (address[] memory) {
+    function getPathForETHtoDAI() internal pure returns (address[] memory) {
+    IUniswapV2Router02 uniswapRouter = IUniswapV2Router02(0x93bcDc45f7e62f89a8e901DC4A0E2c6C427D9F25);
+    address DAI = 0x8f3Cf7ad23Cd3CaDbD9735AFf958023239c6A063;
     address[] memory path = new address[](2);
     path[0] = uniswapRouter.WETH();
     path[1] = DAI;
@@ -231,15 +241,21 @@ contract Vault {
     return path;
     }
 
-    function getPathForETHtoUSDC() internal view returns (address[] memory) {
+    function getPathForETHtoUSDC() internal pure returns (address[] memory) {
+    address USDC = 0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174;
+    IUniswapV2Router02 uniswapRouter = IUniswapV2Router02(0x93bcDc45f7e62f89a8e901DC4A0E2c6C427D9F25);
+
     address[] memory path = new address[](2);
+    
     path[0] = uniswapRouter.WETH();
     path[1] = USDC;
     
     return path;
     }
     
-    function getPathForETHtoUSDT() internal view returns (address[] memory) {
+    function getPathForETHtoUSDT() internal pure returns (address[] memory) {
+    address USDT = 0xc2132D05D31c914a87C6611C10748AEb04B58e8F;
+    IUniswapV2Router02 uniswapRouter = IUniswapV2Router02(0x93bcDc45f7e62f89a8e901DC4A0E2c6C427D9F25);
     address[] memory path = new address[](2);
     path[0] = uniswapRouter.WETH();
     path[1] = USDT;
@@ -248,37 +264,44 @@ contract Vault {
     }
 
     function getDaiBalance() public view returns (uint) {
+        address DAI = 0x8f3Cf7ad23Cd3CaDbD9735AFf958023239c6A063;
         uint daibalance = IERC20(DAI).balanceOf(address(this));
         return daibalance;
     }
 
     function getUsdcBalance() public view returns (uint) {
+        address USDC = 0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174;
         uint daibalance = IERC20(USDC).balanceOf(address(this));
         return daibalance;
     }
 
     function getUsdtBalance() public view returns (uint) {
+        address USDT = 0xc2132D05D31c914a87C6611C10748AEb04B58e8F;
         uint daibalance = IERC20(USDT).balanceOf(address(this));
         return daibalance;
     }
     
 
     function maDaiBalance() public view returns (uint) {
+        address maDAI = 0x27F8D03b3a2196956ED754baDc28D73be8830A6e;
         uint daibalance = IERC20(maDAI).balanceOf(address(this));
         return daibalance;
     }
 
     function maUSDCBalance() public view returns (uint) {
+        address maUSDC = 0x1a13F4Ca1d028320A707D99520AbFefca3998b7F;
         uint daibalance = IERC20(maUSDC).balanceOf(address(this));
         return daibalance;
     }
 
     function maUSDTBalance() public view returns (uint) {
+        address maUSDT = 0x60D55F02A771d515e077c9C2403a1ef324885CeC;
         uint daibalance = IERC20(maUSDT).balanceOf(address(this));
         return daibalance;
     }
 
     function am3CRVTBalance() public view returns (uint) {
+        address am3CRV = 0xE7a24EF0C5e95Ffb0f6684b813A78F2a3AD7D171;
         uint am3CRVamt = IERC20(am3CRV).balanceOf(address(this));
         return am3CRVamt;
     }
