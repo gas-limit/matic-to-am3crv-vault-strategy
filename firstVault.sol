@@ -32,15 +32,20 @@ contract Vault {
     //vault variables
     uint public totalLPTokensMinted;
     bool public isLocked;
-    uint public step;
+    uint startingTime;
 
-    //Stablecoin Instances
+    uint accumulationPeriod = startingTime + 1 weeks;
+    bool isSwapped;
+    bool isLoaned;
+    bool isProvided;
+
+    //Stablecoin Addresses
     //address private constant WETH = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2;
     //address constant DAI = 0x8f3Cf7ad23Cd3CaDbD9735AFf958023239c6A063;
     //address constant USDC = 0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174;
     //address constant USDT = 0xc2132D05D31c914a87C6611C10748AEb04B58e8F;
 
-    //AAVE Token Instances
+    //AAVE Token Addresses
     //address constant maDAI = 0x27F8D03b3a2196956ED754baDc28D73be8830A6e;
     //address constant maUSDC = 0x1a13F4Ca1d028320A707D99520AbFefca3998b7F;
     //address constant maUSDT = 0x60D55F02A771d515e077c9C2403a1ef324885CeC;
@@ -66,6 +71,7 @@ contract Vault {
 
     constructor() {
         owner = msg.sender;
+        startingTime = block.timestamp;
     }
 
 // ========================================= Vault Management 🔐
@@ -95,7 +101,9 @@ contract Vault {
 
     //add ETH to vault
     function deposit() payable external {
+        require(block.timestamp < startingTime);
         require(!isLocked);
+
         uint shares;
         if (totalSupply == 0) {
             shares = msg.value;
@@ -116,7 +124,7 @@ contract Vault {
         uint amount = (_shares * address(this).balance) / totalSupply;
         _burn(msg.sender, _shares);
 
-        //  ** send user something of amount **
+        //  ** send user something  **
 
     }
     */
@@ -130,6 +138,8 @@ contract Vault {
 
 
     function A_ETHToStablesUniswap() public {
+        require(block.timestamp >= startingTime && !isSwapped);
+  
         IUniswapV2Router02 uniswapRouter = IUniswapV2Router02(0x93bcDc45f7e62f89a8e901DC4A0E2c6C427D9F25);
         //require(msg.sender == owner,"must be owner");
         //require(step == 0, "STEP_COMPLETED");
@@ -164,60 +174,63 @@ contract Vault {
         // refund leftover ETH to user
       //  (bool success,) = msg.sender.call{ value: address(this).balance }("");
       //  require(success, "refund failed");
+
+      isSwapped = true;
        
     }
 
      
     function B_DepositIntoAAVE() public {
-       // require(msg.sender == owner,"must be owner");
-       // require(step == 1,"STEP_COMPLETED");
-        address USDC = 0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174;
-        address DAI = 0x8f3Cf7ad23Cd3CaDbD9735AFf958023239c6A063;
-        address USDT = 0xc2132D05D31c914a87C6611C10748AEb04B58e8F;
-        address ProviderAddress = 0xd05e3E715d945B59290df0ae8eF85c1BdB684744;
-        ILendingPool LendingPool = (ILendingPool(ILendingPoolAddressesProvider(ProviderAddress).getLendingPool()));
+        require(isSwapped && !isLoaned);
+
+        IERC20 USDC = IERC20(0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174);
+        IERC20 DAI = IERC20(0x8f3Cf7ad23Cd3CaDbD9735AFf958023239c6A063);
+        IERC20 USDT = IERC20(0xc2132D05D31c914a87C6611C10748AEb04B58e8F);
+
+        ILendingPool LendingPool = (ILendingPool(ILendingPoolAddressesProvider(0xd05e3E715d945B59290df0ae8eF85c1BdB684744).getLendingPool()));
         uint16 REFERRAL_CODE = uint16(0);
 
-        IERC20(DAI).approve(address(LendingPool),  IERC20(DAI).balanceOf(address(this)));
-        IERC20(USDC).approve(address(LendingPool), IERC20(USDC).balanceOf(address(this)));
-        IERC20(USDT).approve(address(LendingPool), IERC20(USDT).balanceOf(address(this)));
+        IERC20(DAI).approve(address(LendingPool),  DAI.balanceOf(address(this)));
+        IERC20(USDC).approve(address(LendingPool), USDC.balanceOf(address(this)));
+        IERC20(USDT).approve(address(LendingPool), USDT.balanceOf(address(this)));
        // return address(_lendingPool());
+
         //  deposit USDC, USDT, and DAI into AAVE
-       LendingPool.deposit(DAI, IERC20(DAI).balanceOf(address(this)) , address(this), REFERRAL_CODE);
-       LendingPool.deposit(USDC, IERC20(USDC).balanceOf(address(this)) , address(this), REFERRAL_CODE);
-       LendingPool.deposit(USDT, IERC20(USDT).balanceOf(address(this)) , address(this), REFERRAL_CODE);
+       LendingPool.deposit(address(DAI), IERC20(DAI).balanceOf(address(this)) , address(this), REFERRAL_CODE);
+       LendingPool.deposit(address(USDC), IERC20(USDC).balanceOf(address(this)) , address(this), REFERRAL_CODE);
+       LendingPool.deposit(address(USDT), IERC20(USDT).balanceOf(address(this)) , address(this), REFERRAL_CODE);
 
-
-
-        //step++;
+        isLoaned = true;
     }
     
     
     function C_DepositIntoCurve() public {
-     //   require(msg.sender == owner,"must be owner");
-     //   require(step == 2, "STEP_COMPLETED");
-    address maDAI = 0x27F8D03b3a2196956ED754baDc28D73be8830A6e;
-    address maUSDC = 0x1a13F4Ca1d028320A707D99520AbFefca3998b7F;
-    address maUSDT = 0x60D55F02A771d515e077c9C2403a1ef324885CeC;
+    
+    require(isLoaned && !isProvided, "tokens need to be Loaned first");
+
+    IERC20 maDAI = IERC20(0x27F8D03b3a2196956ED754baDc28D73be8830A6e);
+    IERC20 maUSDC = IERC20(0x1a13F4Ca1d028320A707D99520AbFefca3998b7F);
+    IERC20 maUSDT = IERC20(0x60D55F02A771d515e077c9C2403a1ef324885CeC);
+
     ICurve_AAVE_Stable_Pool curvePool = ICurve_AAVE_Stable_Pool(0x445FE580eF8d70FF569aB36e80c647af338db351);
         //  calculate amount of AAVE stablecoins in contract and store in array
-        uint[3] memory aaveTokenAmount = [IERC20(maDAI).balanceOf(address(this)),IERC20(maUSDC).balanceOf(address(this)),IERC20(maUSDT).balanceOf(address(this))];
+        uint[3] memory aaveTokenAmount = [maDAI.balanceOf(address(this)),maUSDC.balanceOf(address(this)),maUSDT.balanceOf(address(this))];
 
 
         //calculate minumum amount of LP tokens to mint (required by add liquidity function)
         //uint curve_expected_LP_token_amount = ICurve_AAVE_Stable_Pool(curvePool).calc_token_amount(aaveTokenAmount,true);
 
         //approve
-        IERC20(maDAI).approve(address(curvePool), type(uint256).max);
-        IERC20(maUSDC).approve(address(curvePool), type(uint256).max);
-        IERC20(maUSDT).approve(address(curvePool), type(uint256).max);
+        maDAI.approve(address(curvePool), type(uint256).max);
+        maUSDC.approve(address(curvePool), type(uint256).max);
+        maUSDT.approve(address(curvePool), type(uint256).max);
 
         // Deposit funds into Curve's Polygon AAVE Stablecoin Pool
         uint actual_LP_token_amount = ICurve_AAVE_Stable_Pool(curvePool).add_liquidity(aaveTokenAmount,0);
         //update public LP token amount minted
         totalLPTokensMinted = actual_LP_token_amount;
 
-        step++;
+        isProvided = true;
     }
 
     function D_WithdrawFromCurve() public {
@@ -334,84 +347,15 @@ interface IERC20 {
 }
 
 
-interface IWETH is IERC20 {
-    function deposit() external payable;
-
-    function withdraw(uint amount) external;
-}
-
 interface ILendingPool {
     function deposit(address _asset, uint256 _amount, address _onBehalfOf, uint16 referralCode) external;
 }
 
 interface ILendingPoolAddressesProvider {
-  event MarketIdSet(string newMarketId);
-  event LendingPoolUpdated(address indexed newAddress);
-  event ConfigurationAdminUpdated(address indexed newAddress);
-  event EmergencyAdminUpdated(address indexed newAddress);
-  event LendingPoolConfiguratorUpdated(address indexed newAddress);
-  event LendingPoolCollateralManagerUpdated(address indexed newAddress);
-  event PriceOracleUpdated(address indexed newAddress);
-  event LendingRateOracleUpdated(address indexed newAddress);
-  event ProxyCreated(bytes32 id, address indexed newAddress);
-  event AddressSet(bytes32 id, address indexed newAddress, bool hasProxy);
-
-  function getMarketId() external view returns (string memory);
-
-  function setMarketId(string calldata marketId) external;
-
-  function setAddress(bytes32 id, address newAddress) external;
-
-  function setAddressAsProxy(bytes32 id, address impl) external;
-
-  function getAddress(bytes32 id) external view returns (address);
 
   function getLendingPool() external view returns (address);
 
-  function setLendingPoolImpl(address pool) external;
-
-  function getLendingPoolConfigurator() external view returns (address);
-
-  function setLendingPoolConfiguratorImpl(address configurator) external;
-
-  function getLendingPoolCollateralManager() external view returns (address);
-
-  function setLendingPoolCollateralManager(address manager) external;
-
-  function getPoolAdmin() external view returns (address);
-
-  function setPoolAdmin(address admin) external;
-
-  function getEmergencyAdmin() external view returns (address);
-
-  function setEmergencyAdmin(address admin) external;
-
-  function getPriceOracle() external view returns (address);
-
-  function setPriceOracle(address priceOracle) external;
-
-  function getLendingRateOracle() external view returns (address);
-
-  function setLendingRateOracle(address lendingRateOracle) external;
 }
-
-interface ILendingPoolAddressesProviderRegistry {
-  event AddressesProviderRegistered(address indexed newAddress);
-  event AddressesProviderUnregistered(address indexed newAddress);
-
-  function getAddressesProvidersList() external view returns (address[] memory);
-
-  function getAddressesProviderIdByAddress(address addressesProvider)
-    external
-    view
-    returns (uint256);
-
-  function registerAddressesProvider(address provider, uint256 id) external;
-
-  function unregisterAddressesProvider(address provider) external;
-}
-
-
 
 
 interface IUniswapV2Router01 {
