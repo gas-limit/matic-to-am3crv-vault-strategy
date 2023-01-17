@@ -2,6 +2,7 @@
 pragma solidity ^0.8.13;
 
 import "@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
+import "https://github.com/OpenZeppelin/openzeppelin-contracts/blob/master/contracts/utils/math/SafeMath.sol";
 
     //Strategy:
     // 1. Users deposit ETH 
@@ -39,6 +40,9 @@ contract Vault {
     bool isLoaned;
     bool isProvided;
 
+    //chainlink keeper registry address
+    address keeper;
+
     //Stablecoin Addresses
     //address private constant WETH = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2;
     //address constant DAI = 0x8f3Cf7ad23Cd3CaDbD9735AFf958023239c6A063;
@@ -72,6 +76,7 @@ contract Vault {
     constructor() {
         owner = msg.sender;
         startingTime = block.timestamp;
+        keeper = 0x02777053d6764996e594c3E88AF1D58D5363a2e6;
     }
 
 // ========================================= Vault Management 🔐
@@ -100,45 +105,40 @@ contract Vault {
     }
 
     //add ETH to vault
-    function deposit() payable external {
-        require(block.timestamp < startingTime);
-        require(!isLocked);
+    function deposit() payable public {
+      //  require(block.timestamp < startingTime);
+       // require(!isLocked);
 
-        uint shares;
-        if (totalSupply == 0) {
-            shares = msg.value;
-        } else {
-            shares = (msg.value * totalSupply) / address(this).balance;
-        }
-
-        _mint(msg.sender, shares);
+        _mint(msg.sender, msg.value);
     }
 
     function returnContractBalance() public view returns(uint) {
         return address(this).balance;
      }
 
-  /*  function withdraw(uint _shares) external {
+   function withdraw(uint _shares) public {
+       uint faketotal = totalSupply * 12;
         require(!isLocked,"Contract Locked!");
         require(_shares <= balanceOf[msg.sender],"You dont have that many shares");
-        uint amount = (_shares * address(this).balance) / totalSupply;
+        uint amount = div(balanceOf[msg.sender] )
         _burn(msg.sender, _shares);
 
         //  ** send user something  **
 
     }
-    */
+    
 
 // ========================================= Strategy Execution Methods ⚔️
 
     // How to Execute
-    //1. A_ETHToStablesUniswap() - swap from eth to USDC, USDT, and DAI from a DEX
+    //1. A_ETHToStablesUniswap() - swap from eth to USDC, USDT, and DAI from Uniswap v2
     //2. B_DepositIntoAAVE() - deposit USDC, USDT, and DAI into AAVE 
     //3. C_DepositIntoCurve() - deposit aUSDC, aUSDT, and aDAI into Curve's AAVE stablecoin pool 
+    using SafeMath for uint256;
 
-
-    function A_ETHToStablesUniswap() public {
-        require(block.timestamp >= startingTime && !isSwapped);
+    function A_ETHToStablesUniswap() automated public {
+        //lock deposits
+        isLocked = true;
   
         IUniswapV2Router02 uniswapRouter = IUniswapV2Router02(0x93bcDc45f7e62f89a8e901DC4A0E2c6C427D9F25);
         //require(msg.sender == owner,"must be owner");
@@ -163,13 +163,14 @@ contract Vault {
         amountToSwapInWei = amountToSwapInWei / 10 ** 4;
         amountToSwapInWei -= 2 ether;*/
 
+        //get third of all eth using safemath
+        uint256 third = getThird();
 
-
-                                                        //put zero expected amount because it keeps failing if I put an estimate
+        //put zero expected amount because it keeps failing if I put an estimate
         // swap all ETH to USDC, USDT, and DAI from a DEX (Uniswap v2)
-        uniswapRouter.swapExactETHForTokens{ value: 100 ether }(0, getPathForETHtoDAI(), address(this), deadline);
-        uniswapRouter.swapExactETHForTokens{ value: 100 ether }(0, getPathForETHtoUSDC(), address(this), deadline);
-        uniswapRouter.swapExactETHForTokens{ value: 100 ether }(0, getPathForETHtoUSDT(), address(this), deadline);
+        uniswapRouter.swapExactETHForTokens{ value: third * 1 ether }(0, getPathForETHtoDAI(), address(this), deadline);
+        uniswapRouter.swapExactETHForTokens{ value: third * 1 ether }(0, getPathForETHtoUSDC(), address(this), deadline);
+        uniswapRouter.swapExactETHForTokens{ value: third * 1 ether }(0, getPathForETHtoUSDT(), address(this), deadline);
 
         // refund leftover ETH to user
       //  (bool success,) = msg.sender.call{ value: address(this).balance }("");
@@ -180,7 +181,7 @@ contract Vault {
     }
 
      
-    function B_DepositIntoAAVE() public {
+    function B_DepositIntoAAVE() automated public {
         require(isSwapped && !isLoaned);
 
         IERC20 USDC = IERC20(0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174);
@@ -204,7 +205,7 @@ contract Vault {
     }
     
     
-    function C_DepositIntoCurve() public {
+    function C_DepositIntoCurve() automated public {
     
     require(isLoaned && !isProvided, "tokens need to be Loaned first");
 
@@ -233,8 +234,8 @@ contract Vault {
         isProvided = true;
     }
 
-    function D_WithdrawFromCurve() public {
-      //  require(msg.sender == owner, "must be owner");
+    function D_WithdrawFromCurve() automated public {
+    
       //  uint LPTokens = IERC20(am3CRV).balanceOf(address(this));
 
        // uint curve_expected_LP_token_amount = ICurve_AAVE_Stable_Pool(curvePool).calc_token_amount(, false);
@@ -276,6 +277,12 @@ contract Vault {
     return path;
     }
 
+    function getThird() public view returns (uint256) {
+        return SafeMath.div(address(this).balance * 3333,  10000);
+    }
+
+
+    /* Testing functions, TO BE DELETED */
     function getDaiBalance() public view returns (uint) {
         address DAI = 0x8f3Cf7ad23Cd3CaDbD9735AFf958023239c6A063;
         uint daibalance = IERC20(DAI).balanceOf(address(this));
@@ -317,6 +324,14 @@ contract Vault {
         address am3CRV = 0xE7a24EF0C5e95Ffb0f6684b813A78F2a3AD7D171;
         uint am3CRVamt = IERC20(am3CRV).balanceOf(address(this));
         return am3CRVamt;
+    }
+
+
+    //MODIFIERS
+    //can only be called by chainlink keeper
+    modifier automated() {
+        require(msg.sender == keeper);
+        _;
     }
     
     // receive function 
