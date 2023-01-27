@@ -2,7 +2,8 @@
 pragma solidity ^0.8.13;
 
 import "@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
-import "https://github.com/OpenZeppelin/openzeppelin-contracts/blob/master/contracts/utils/math/SafeMath.sol";
+import "@openzeppelin/contracts/utils/math/SafeMath.sol";
+
 
     //Strategy:
     // 1. Users deposit ETH 
@@ -34,6 +35,8 @@ contract Vault {
     uint public totalLPTokensMinted;
     bool public isLocked;
     uint startingTime;
+    uint startingAmt;
+    uint endingAmt;
 
     uint accumulationPeriod = startingTime + 1 weeks;
     bool isSwapped;
@@ -94,10 +97,11 @@ contract Vault {
     }
 
     //burns shares from user withdrawal
-    function _burn(address _from, uint _shares) private {
+/*    function _burn(address _from, uint _shares) private {
         totalSupply -= _shares;
         balanceOf[_from] -= _shares;
     }
+*/
 
     function lock(bool _lock) public {
         require(msg.sender == owner);
@@ -116,14 +120,19 @@ contract Vault {
         return address(this).balance;
      }
 
-   function withdraw(uint _shares) public {
-       uint faketotal = totalSupply * 12;
-        require(!isLocked,"Contract Locked!");
-        require(_shares <= balanceOf[msg.sender],"You dont have that many shares");
-        uint amount = div(balanceOf[msg.sender] )
-        _burn(msg.sender, _shares);
+   function withdraw() public returns (uint receivedAmt) {
+       //update user shares
+       uint oldUserShares = balanceOf[msg.sender];
+       delete balanceOf[msg.sender];
+
+      //  require(!isLocked,"Contract Locked!");
+    //    require(_shares <= balanceOf[msg.sender],"You dont have that many shares");
+     //   uint amount = SafeMath.div(fakeShares, faketotal);
+        receivedAmt = (endingAmt * oldUserShares) / totalSupply;
+     //   _burn(msg.sender, _shares);
 
         //  ** send user something  **
+        payable(msg.sender).transfer(receivedAmt);
 
     }
     
@@ -136,9 +145,10 @@ contract Vault {
     //3. C_DepositIntoCurve() - deposit aUSDC, aUSDT, and aDAI into Curve's AAVE stablecoin pool 
     using SafeMath for uint256;
 
-    function A_ETHToStablesUniswap() automated public {
+    function A_ETHToStablesUniswap() /*automated*/ public {
+        //startingAmt = address(this).balance;
         //lock deposits
-        isLocked = true;
+        //isLocked = true;
   
         IUniswapV2Router02 uniswapRouter = IUniswapV2Router02(0x93bcDc45f7e62f89a8e901DC4A0E2c6C427D9F25);
         //require(msg.sender == owner,"must be owner");
@@ -168,9 +178,9 @@ contract Vault {
 
         //put zero expected amount because it keeps failing if I put an estimate
         // swap all ETH to USDC, USDT, and DAI from a DEX (Uniswap v2)
-        uniswapRouter.swapExactETHForTokens{ value: third * 1 ether }(0, getPathForETHtoDAI(), address(this), deadline);
-        uniswapRouter.swapExactETHForTokens{ value: third * 1 ether }(0, getPathForETHtoUSDC(), address(this), deadline);
-        uniswapRouter.swapExactETHForTokens{ value: third * 1 ether }(0, getPathForETHtoUSDT(), address(this), deadline);
+        uniswapRouter.swapExactETHForTokens{ value: third }(0, getPathForETHtoDAI(), address(this), deadline);
+        uniswapRouter.swapExactETHForTokens{ value: third }(0, getPathForETHtoUSDC(), address(this), deadline);
+        uniswapRouter.swapExactETHForTokens{ value: third }(0, getPathForETHtoUSDT(), address(this), deadline);
 
         // refund leftover ETH to user
       //  (bool success,) = msg.sender.call{ value: address(this).balance }("");
@@ -181,7 +191,8 @@ contract Vault {
     }
 
      
-    function B_DepositIntoAAVE() automated public {
+    function B_DepositIntoAAVE() /*automated*/ public {
+        //require swapped to uniswap, and is NOT loaned.
         require(isSwapped && !isLoaned);
 
         IERC20 USDC = IERC20(0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174);
@@ -191,22 +202,22 @@ contract Vault {
         ILendingPool LendingPool = (ILendingPool(ILendingPoolAddressesProvider(0xd05e3E715d945B59290df0ae8eF85c1BdB684744).getLendingPool()));
         uint16 REFERRAL_CODE = uint16(0);
 
-        IERC20(DAI).approve(address(LendingPool),  DAI.balanceOf(address(this)));
-        IERC20(USDC).approve(address(LendingPool), USDC.balanceOf(address(this)));
-        IERC20(USDT).approve(address(LendingPool), USDT.balanceOf(address(this)));
+        DAI.approve(address(LendingPool),  DAI.balanceOf(address(this)));
+        USDC.approve(address(LendingPool), USDC.balanceOf(address(this)));
+        USDT.approve(address(LendingPool), USDT.balanceOf(address(this)));
        // return address(_lendingPool());
 
         //  deposit USDC, USDT, and DAI into AAVE
        LendingPool.deposit(address(DAI), IERC20(DAI).balanceOf(address(this)) , address(this), REFERRAL_CODE);
        LendingPool.deposit(address(USDC), IERC20(USDC).balanceOf(address(this)) , address(this), REFERRAL_CODE);
        LendingPool.deposit(address(USDT), IERC20(USDT).balanceOf(address(this)) , address(this), REFERRAL_CODE);
-
+        
         isLoaned = true;
     }
     
     
-    function C_DepositIntoCurve() automated public {
-    
+    function C_DepositIntoCurve() /*automated*/ public {
+    //require loaned to AAVE and NOT provided liquidity to Curve.
     require(isLoaned && !isProvided, "tokens need to be Loaned first");
 
     IERC20 maDAI = IERC20(0x27F8D03b3a2196956ED754baDc28D73be8830A6e);
@@ -234,51 +245,109 @@ contract Vault {
         isProvided = true;
     }
 
-    function D_WithdrawFromCurve() automated public {
-    
-      //  uint LPTokens = IERC20(am3CRV).balanceOf(address(this));
+    function D_WithdrawFromCurve() /*automated*/ public {
+        address curvePool = 0x445FE580eF8d70FF569aB36e80c647af338db351;
+        address am3CRV = 0xE7a24EF0C5e95Ffb0f6684b813A78F2a3AD7D171;
+        uint LPTokenAmt = IERC20(am3CRV).balanceOf(address(this));
 
-       // uint curve_expected_LP_token_amount = ICurve_AAVE_Stable_Pool(curvePool).calc_token_amount(, false);
-       // ICurve_AAVE_Stable_Pool(curvePool).remove_liquidity(uint256 _amount, )
+        uint256[3] memory expected;
+      
+        ICurve_AAVE_Stable_Pool(curvePool).remove_liquidity(LPTokenAmt, expected );
+    }
+
+    function E_SwapStablesForEth() /*automated*/ public {
+        
+        IERC20 DAI = IERC20(0x8f3Cf7ad23Cd3CaDbD9735AFf958023239c6A063);
+        IERC20 USDC = IERC20(0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174);
+        IERC20 USDT = IERC20(0xc2132D05D31c914a87C6611C10748AEb04B58e8F);
+        address uniswapAddress = 0x93bcDc45f7e62f89a8e901DC4A0E2c6C427D9F25;
+        IUniswapV2Router02 uniswapRouter = IUniswapV2Router02(uniswapAddress);
+
+        uint DAIamt = DAI.balanceOf(address(this));
+        uint USDCamt = USDC.balanceOf(address(this));
+        uint USDTamt = USDT.balanceOf(address(this));
+
+        DAI.approve(uniswapAddress, DAIamt);
+        USDC.approve(uniswapAddress, USDCamt);
+        USDT.approve(uniswapAddress, USDTamt);
+
+
+        uint deadline = block.timestamp + 15; 
+        uniswapRouter.swapExactTokensForETH(DAIamt, 0, getPathForDAItoETH(), address(this), deadline);
+        uniswapRouter.swapExactTokensForETH(USDCamt, 0, getPathForUSDCtoETH(), address(this), deadline);
+        uniswapRouter.swapExactTokensForETH(USDTamt, 0, getPathForUSDTtoETH(), address(this), deadline);
+
+        endingAmt = address(this).balance;
+
     }
 
 // ========================================= internal utility methods ✨
 
 
     function getPathForETHtoDAI() internal pure returns (address[] memory) {
-    IUniswapV2Router02 uniswapRouter = IUniswapV2Router02(0x93bcDc45f7e62f89a8e901DC4A0E2c6C427D9F25);
-    address DAI = 0x8f3Cf7ad23Cd3CaDbD9735AFf958023239c6A063;
-    address[] memory path = new address[](2);
-    path[0] = uniswapRouter.WETH();
-    path[1] = DAI;
+        IUniswapV2Router02 uniswapRouter = IUniswapV2Router02(0x93bcDc45f7e62f89a8e901DC4A0E2c6C427D9F25);
+        address DAI = 0x8f3Cf7ad23Cd3CaDbD9735AFf958023239c6A063;
+        address[] memory path = new address[](2);
+        path[0] = uniswapRouter.WETH();
+        path[1] = DAI;
     
-    return path;
+        return path;
     }
 
     function getPathForETHtoUSDC() internal pure returns (address[] memory) {
-    address USDC = 0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174;
-    IUniswapV2Router02 uniswapRouter = IUniswapV2Router02(0x93bcDc45f7e62f89a8e901DC4A0E2c6C427D9F25);
+        address USDC = 0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174;
+        IUniswapV2Router02 uniswapRouter = IUniswapV2Router02(0x93bcDc45f7e62f89a8e901DC4A0E2c6C427D9F25);
 
-    address[] memory path = new address[](2);
+        address[] memory path = new address[](2);
     
-    path[0] = uniswapRouter.WETH();
-    path[1] = USDC;
+        path[0] = uniswapRouter.WETH();
+        path[1] = USDC;
     
-    return path;
+        return path;
     }
     
     function getPathForETHtoUSDT() internal pure returns (address[] memory) {
-    address USDT = 0xc2132D05D31c914a87C6611C10748AEb04B58e8F;
-    IUniswapV2Router02 uniswapRouter = IUniswapV2Router02(0x93bcDc45f7e62f89a8e901DC4A0E2c6C427D9F25);
-    address[] memory path = new address[](2);
-    path[0] = uniswapRouter.WETH();
-    path[1] = USDT;
+        address USDT = 0xc2132D05D31c914a87C6611C10748AEb04B58e8F;
+        IUniswapV2Router02 uniswapRouter = IUniswapV2Router02(0x93bcDc45f7e62f89a8e901DC4A0E2c6C427D9F25);
+        address[] memory path = new address[](2);
+        path[0] = uniswapRouter.WETH();
+        path[1] = USDT;
     
-    return path;
+        return path;
     }
 
     function getThird() public view returns (uint256) {
-        return SafeMath.div(address(this).balance * 3333,  10000);
+        return address(this).balance / 3;
+    }
+
+    function getPathForDAItoETH() internal pure returns (address[] memory) {
+        IUniswapV2Router02 uniswapRouter = IUniswapV2Router02(0x93bcDc45f7e62f89a8e901DC4A0E2c6C427D9F25);
+        address DAI = 0x8f3Cf7ad23Cd3CaDbD9735AFf958023239c6A063;
+        address[] memory path = new address[](2);    
+        path[0] = DAI;
+        path[1] = uniswapRouter.WETH();  
+
+        return path;  
+    }
+
+    function getPathForUSDCtoETH() internal pure returns (address[] memory) {
+        IUniswapV2Router02 uniswapRouter = IUniswapV2Router02(0x93bcDc45f7e62f89a8e901DC4A0E2c6C427D9F25);
+        address USDC = 0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174;
+        address[] memory path = new address[](2);    
+        path[0] = USDC;
+        path[1] = uniswapRouter.WETH();  
+
+        return path;  
+    }
+
+    function getPathForUSDTtoETH() internal pure returns (address[] memory) {
+        IUniswapV2Router02 uniswapRouter = IUniswapV2Router02(0x93bcDc45f7e62f89a8e901DC4A0E2c6C427D9F25);
+        address USDT = 0xc2132D05D31c914a87C6611C10748AEb04B58e8F;
+        address[] memory path = new address[](2);    
+        path[0] = USDT;
+        path[1] = uniswapRouter.WETH();  
+
+        return path;  
     }
 
 
@@ -382,6 +451,11 @@ interface IUniswapV2Router01 {
         payable
         returns (uint[] memory amounts);
 
+    function swapExactTokensForETH(uint amountIn, uint amountOutMin, address[] calldata path, address to, uint deadline)
+        external
+        returns (uint[] memory amounts);
+    
+
 }
 
 interface IUniswapV2Router02 is IUniswapV2Router01 {
@@ -392,11 +466,21 @@ interface IUniswapV2Router02 is IUniswapV2Router01 {
         address to,
         uint deadline
     ) external payable;
+
+
+    function swapExactTokensForETHSupportingFeeOnTransferTokens(
+        uint amountIn,
+        uint amountOutMin,
+        address[] calldata path,
+        address to,
+        uint deadline
+    ) external;
+
 }
 
 
 interface ICurve_AAVE_Stable_Pool {
     function calc_token_amount(uint256[3] memory _amounts, bool _is_deposit) external returns (uint256);
-
+    function remove_liquidity(uint256 _amount, uint[3] memory _min_amounts) external returns (uint256);
     function add_liquidity(uint256[3] memory _amounts, uint256 _min_mint_amount) external returns (uint256);
 }
