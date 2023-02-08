@@ -255,7 +255,7 @@ contract Vault {
         ICurve_AAVE_Stable_Pool(curvePool).remove_liquidity(LPTokenAmt, expected );
     }
 
-    function E_SwapStablesForEth() /*automated*/ public {
+    function F_SwapStablesForEth() /*automated*/ public {
         
         IERC20 DAI = IERC20(0x8f3Cf7ad23Cd3CaDbD9735AFf958023239c6A063);
         IERC20 USDC = IERC20(0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174);
